@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix Catalog — Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#E50914;--red-dim:rgba(229,9,20,.12);
+  --bg:#080808;--card:#161616;--card2:#1c1c1c;--border:#242424;
+  --text:#e8e8e8;--muted:#666;--muted2:#999;
+  --cyan:#22D3EE;--gold:#F59E0B;--green:#22C55E;
+  --purple:#A78BFA;--pink:#F472B6;--orange:#FB923C;
+  --c0:#F59E0B;--c1:#22D3EE;--c2:#E50914;
+  --c0d:rgba(245,158,11,.12);--c1d:rgba(34,211,238,.12);--c2d:rgba(229,9,20,.12);
+  --nav-h:48px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* NAV */
+.topnav{
+  height:var(--nav-h);flex-shrink:0;
+  background:rgba(8,8,8,.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 36px;gap:0;z-index:100;
+}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:#fff;margin-right:32px;flex-shrink:0}
+.nav-brand span{color:var(--red)}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{display:flex;align-items:center;gap:8px;padding:0 16px;height:var(--nav-h);font-size:11px;font-weight:500;letter-spacing:.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:'DM Sans',sans-serif}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:#fff;border-bottom-color:var(--red)}
+.nav-tab .tab-num{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;background:var(--red-dim);color:var(--red);padding:2px 6px;border-radius:4px;border:1px solid rgba(229,9,20,.2)}
+.nav-tab.active .tab-num{background:var(--red);color:#fff}
+
+/* PAGES */
+.page{display:none;flex:1;overflow:hidden}
+.page.active{display:flex;flex-direction:column}
+
+/* ══ PAGE 0 — NO-SCROLL LAYOUT ══ */
+#page-m0{overflow:hidden}
+
+.ov-layout{
+  flex:1;display:grid;overflow:hidden;
+  grid-template-rows:auto 1fr 1fr;
+  grid-template-columns:1fr 1fr 1fr 1fr;
+  gap:8px;padding:8px;
+}
+
+/* header spans all 4 cols, row 1 */
+.ov-header{
+  grid-column:1/-1;grid-row:1;
+  background:linear-gradient(155deg,#0c0c0c 50%,#0c0a14 100%);
+  border:1px solid var(--border);border-radius:8px;
+  padding:10px 20px;
+  display:flex;align-items:center;gap:32px;
+  position:relative;overflow:hidden;
+}
+.ov-header::before{content:"NETFLIX";position:absolute;right:-8px;top:-22px;font-family:'Bebas Neue',sans-serif;font-size:110px;line-height:1;color:#A78BFA;opacity:.04;pointer-events:none;letter-spacing:-2px}
+.ov-h-left{flex:1}
+.ov-eyebrow{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:#A78BFA;font-weight:500;margin-bottom:4px}
+.ov-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(18px,2.2vw,30px);letter-spacing:2px;color:#fff;line-height:1;margin-bottom:3px}
+.ov-title span{color:#A78BFA}
+.ov-title em{color:#22D3EE;font-style:normal}
+.ov-desc{font-size:10px;color:var(--muted);font-weight:300;line-height:1.45}
+.ov-kpis{display:flex;gap:16px;align-items:center}
+.ov-kpi{text-align:center;padding:0 14px;border-left:1px solid var(--border)}
+.ov-kpi:first-child{border-left:none}
+.ov-kval{font-family:'Bebas Neue',sans-serif;font-size:clamp(20px,2vw,28px);line-height:1}
+.ov-klbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:1px}
+
+/* grid cards row 2 & 3 */
+.ov-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.ov-card-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);line-height:1;margin-bottom:1px;flex-shrink:0}
+.ov-card-sub{font-size:9px;color:var(--muted);margin-bottom:6px;flex-shrink:0}
+.ov-chart-wrap{flex:1;position:relative;min-height:0;min-width:0}
+.ov-chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+
+/* donut card layout */
+.ov-donut-card{flex-direction:row;gap:10px;align-items:center}
+.ov-donut-left{display:flex;flex-direction:column;flex-shrink:0}
+.ov-donut-wrap{position:relative;width:100px;height:100px;flex-shrink:0}
+.ov-donut-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.ov-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.ov-dcval{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#A78BFA;line-height:1}
+.ov-dclbl{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.ov-legend{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.ov-li{display:flex;align-items:center;gap:6px;font-size:10px}
+.ov-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ov-lname{color:var(--muted2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-lval{color:var(--text);font-weight:600;white-space:nowrap}
+.ov-lpct{color:var(--muted);font-size:9px;margin-left:2px}
+
+/* cluster card layout */
+.ov-cluster-card{flex-direction:column}
+.ov-cbar-list{display:flex;flex-direction:column;gap:5px;flex:1;justify-content:center}
+.ov-cbar-group{font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-top:4px;margin-bottom:2px}
+.ov-cbar-row{display:flex;align-items:center;gap:6px}
+.ov-cbar-lbl{font-size:9px;color:var(--muted);width:52px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-cbar-track{flex:1;height:4px;background:#1e1e1e;border-radius:2px;overflow:hidden}
+.ov-cbar-fill{height:100%;border-radius:2px;width:0;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.ov-cbar-val{font-size:9px;color:var(--muted);width:30px;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* insight pill */
+.ov-insight{font-size:9px;color:var(--muted2);background:rgba(255,255,255,.02);border:1px solid #2a2a2a;border-radius:4px;padding:5px 8px;line-height:1.45;flex-shrink:0;margin-top:4px}
+.ov-insight strong{color:var(--red)}
+
+/* evidence table */
+.ov-table{width:100%;border-collapse:collapse;font-size:9px}
+.ov-table th{text-align:left;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 8px 6px;font-weight:500;border-bottom:1px solid var(--border)}
+.ov-table td{padding:5px 8px;border-bottom:1px solid #1e1e1e;color:var(--muted2);vertical-align:top;line-height:1.35}
+.ov-table tr:last-child td{border-bottom:none}
+.ov-table tr:hover td{background:rgba(255,255,255,.02)}
+.ov-table td:first-child{color:#fff;font-weight:600;white-space:nowrap}
+
+/* scrollable pages */
+.page-scroll{flex:1;overflow-y:auto}
+.page-scroll::-webkit-scrollbar{width:6px}
+.page-scroll::-webkit-scrollbar-track{background:transparent}
+.page-scroll::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+
+/* ── HEADERS ── */
+.pg-header{position:relative;overflow:hidden;padding:40px 52px 32px;border-bottom:1px solid var(--border)}
+.pg-header.m1{background:linear-gradient(160deg,#0c0c0c 55%,#1a0303 100%)}
+.pg-header.m2{background:linear-gradient(150deg,#0c0c0c 50%,#0a0a14 100%)}
+.pg-header.m1::before{content:"NETFLIX";position:absolute;right:-8px;top:-28px;font-family:'Bebas Neue',sans-serif;font-size:220px;line-height:1;color:var(--red);opacity:.04;pointer-events:none;letter-spacing:-4px}
+.pg-header.m2::before{content:"K";position:absolute;right:-10px;top:-30px;font-family:'Bebas Neue',sans-serif;font-size:280px;line-height:1;color:var(--cyan);opacity:.03;pointer-events:none}
+.h-eyebrow{font-size:10px;letter-spacing:5px;text-transform:uppercase;font-weight:500;margin-bottom:14px}
+.m1 .h-eyebrow{color:var(--red)}
+.m2 .h-eyebrow{color:var(--cyan)}
+.pg-header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,5vw,68px);letter-spacing:3px;color:#fff;line-height:.95;margin-bottom:14px}
+.pg-header h1 span{color:var(--red)}
+.pg-header h1 em{color:var(--cyan);font-style:normal}
+.pg-header p{color:var(--muted2);font-size:13px;font-weight:300;max-width:560px;line-height:1.65}
+.h-line{width:40px;height:3px;margin-top:20px}
+.m1 .h-line{background:var(--red)}
+.m2 .h-line{background:var(--cyan)}
+.h-meta{display:flex;gap:32px;margin-top:22px}
+.h-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;line-height:1}
+.h-stat-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.main{padding:40px 52px 0}
+.sec{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;font-weight:500}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 26px 20px;position:relative;overflow:hidden;transition:border-color .25s,transform .2s;cursor:default}
+.kpi:hover{border-color:#3a3a3a;transform:translateY(-2px)}
+.kpi-accent{position:absolute;bottom:0;left:0;right:0;height:2px}
+.kpi-lbl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:500}
+.kpi-val{font-family:'Bebas Neue',sans-serif;font-size:54px;line-height:1;letter-spacing:1px}
+.kpi-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.row{display:grid;gap:14px;margin-bottom:14px}
+.col-2{grid-template-columns:1fr 1fr}
+.col-3{grid-template-columns:1fr 1fr 1fr}
+.col-75{grid-template-columns:7fr 5fr}
+.col-57{grid-template-columns:5fr 7fr}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:26px;opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease,border-color .25s}
+.card.visible{opacity:1;transform:translateY(0)}
+.card:hover{border-color:#333}
+.card-title{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text);margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--muted);margin-bottom:22px;font-weight:300}
+.donut-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.donut-center{position:absolute;text-align:center;pointer-events:none}
+.donut-cval{font-family:'Bebas Neue',sans-serif;font-size:34px;color:#fff;line-height:1}
+.donut-clbl{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.donut-legend{display:flex;flex-direction:column;gap:12px;margin-top:24px}
+.dl-item{display:flex;align-items:center;gap:10px}
+.dl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dl-name{font-size:12px;color:var(--muted2);flex:1}
+.dl-val{font-size:13px;font-weight:700;color:var(--text)}
+.dl-pct{font-size:11px;color:var(--muted);margin-left:4px}
+.hbar-list{display:flex;flex-direction:column;gap:11px}
+.hbar-meta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.hbar-name{font-size:12px;color:var(--text);font-weight:500}
+.hbar-val{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hbar-track{height:5px;background:#222;border-radius:3px;overflow:hidden}
+.hbar-fill{height:100%;border-radius:3px;width:0;transition:width 1.3s cubic-bezier(.16,1,.3,1)}
+.vbar-area{display:flex;align-items:flex-end;gap:8px;height:150px;margin-bottom:12px}
+.vbar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.vbar-count{font-size:9px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.vbar-bar{width:100%;border-radius:4px 4px 0 0;transition:height 1.2s cubic-bezier(.16,1,.3,1)}
+.vbar-labels{display:flex;gap:8px}
+.vbar-lbl{flex:1;text-align:center;font-size:9px;color:var(--muted);line-height:1.3}
+.mini-stats{display:flex;gap:10px;margin-top:20px}
+.mini-stat{flex:1;background:#1c1c1c;border:1px solid var(--border);border-radius:8px;padding:14px 16px;text-align:center}
+.ms-val{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1}
+.ms-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+.insight{display:flex;align-items:flex-start;gap:8px;background:rgba(255,255,255,.02);border:1px solid #2a2a2a;border-radius:6px;padding:9px 14px;font-size:11px;color:var(--muted2);margin-top:16px;line-height:1.55}
+.insight strong{font-weight:600}
+.insight.red{background:var(--red-dim);border-color:rgba(229,9,20,.2)}
+.insight.red strong{color:var(--red)}
+.cluster-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+.ccard{border-radius:10px;border:1px solid var(--border);padding:0;overflow:hidden;transition:transform .2s,border-color .2s}
+.ccard:hover{transform:translateY(-3px)}
+.ccard-header{padding:18px 22px 16px}
+.ccard-num{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;opacity:.7;margin-bottom:6px}
+.ccard-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;line-height:1;color:#fff}
+.ccard-size{font-size:11px;color:rgba(255,255,255,.5);margin-top:5px}
+.ccard-body{background:var(--card);padding:18px 22px 20px;display:flex;flex-direction:column;gap:12px}
+.cstat-row{display:flex;gap:10px}
+.cstat{flex:1;background:var(--card2);border-radius:6px;padding:10px 12px;text-align:center}
+.cstat-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1}
+.cstat-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.ctag-row{display:flex;flex-wrap:wrap;gap:6px}
+.ctag{font-size:10px;padding:4px 10px;border-radius:20px;font-weight:500;border:1px solid}
+.ctitles{display:flex;flex-direction:column;gap:5px}
+.ctitle-item{font-size:11px;color:var(--muted2);padding:5px 10px;background:var(--card2);border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compare-wrap{display:flex;flex-direction:column;gap:14px}
+.compare-label{font-size:11px;color:var(--muted2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.compare-bars{display:flex;flex-direction:column;gap:5px}
+.cbar-row{display:flex;align-items:center;gap:8px}
+.cbar-cluster{font-size:9px;color:var(--muted);width:60px;flex-shrink:0;text-align:right}
+.cbar-track{flex:1;height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden}
+.cbar-fill{height:100%;border-radius:3px;width:0;transition:width 1.3s cubic-bezier(.16,1,.3,1)}
+.cbar-val{font-size:9px;color:var(--muted);width:36px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.pie-legend{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.pl-item{display:flex;align-items:center;gap:10px}
+.pl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pl-name{font-size:12px;color:var(--muted2);flex:1}
+.pl-val{font-size:12px;font-weight:700;color:var(--text)}
+.pl-pct{font-size:10px;color:var(--muted);margin-left:3px}
+.ptable{width:100%;border-collapse:collapse;font-size:12px}
+.ptable th{text-align:left;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;font-weight:500;border-bottom:1px solid var(--border)}
+.ptable td{padding:11px 12px;border-bottom:1px solid #1e1e1e;color:var(--muted2);vertical-align:top}
+.ptable tr:last-child td{border-bottom:none}
+.ptable tr:hover td{background:rgba(255,255,255,.02)}
+footer{text-align:center;padding:24px 0 16px;font-size:11px;color:var(--muted);letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="nav-brand">NET<span>FLIX</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('m0',this)"><span class="tab-num">00</span> Overview</button>
+    <button class="nav-tab" onclick="showPage('m1',this)"><span class="tab-num">01</span> Descriptive Analysis</button>
+    <button class="nav-tab" onclick="showPage('m2',this)"><span class="tab-num">02</span> Clustering</button>
+    <button class="nav-tab" onclick="showPage('m3',this)"><span class="tab-num">03</span> Time Trends</button>
+  </div>
+</nav>
+
+<!-- ══ PAGE 0 — OVERVIEW (no scroll) ══ -->
+<div id="page-m0" class="page active">
+  <div class="ov-layout">
+
+    <!-- HEADER -->
+    <div class="ov-header">
+      <div class="ov-h-left">
+        <div class="ov-eyebrow">Driving Question — At a Glance</div>
+        <div class="ov-title">Has Netflix Become <span>More Adult-Focused</span>, or Is It <em>Diversifying</em>?</div>
+        <div class="ov-desc">Synthesis of descriptive breakdown, content clustering &amp; time trend analysis.</div>
+      </div>
+      <div class="ov-kpis">
+        <div class="ov-kpi"><div class="ov-kval" style="color:#A78BFA">45.5%</div><div class="ov-klbl">Adults — largest group</div></div>
+        <div class="ov-kpi"><div class="ov-kval" style="color:#22D3EE">+13pp</div><div class="ov-klbl">TV share gain 2014→21</div></div>
+        <div class="ov-kpi"><div class="ov-kval" style="color:#E50914">8,807</div><div class="ov-klbl">Total titles analysed</div></div>
+        <div class="ov-kpi"><div class="ov-kval" style="color:#22C55E">85</div><div class="ov-klbl">Producing countries</div></div>
+      </div>
+    </div>
+
+    <!-- ROW 2 -->
+
+    <!-- Rating stack chart -->
+    <div class="ov-card" style="grid-column:1/3;grid-row:2">
+      <div class="ov-card-title">Annual Rating Band Composition</div>
+      <div class="ov-card-sub">% of new-title additions — 2014 to 2021 &nbsp;
+        <span style="color:#E50914">■ Adults</span> &nbsp;
+        <span style="color:#F59E0B">■ Teens</span> &nbsp;
+        <span style="color:#22D3EE">■ Older Kids</span> &nbsp;
+        <span style="color:#22C55E">■ Family</span> &nbsp;
+        <span style="color:#A78BFA">■ Kids</span>
+      </div>
+      <div class="ov-chart-wrap"><canvas id="ov_ratingStack"></canvas></div>
+    </div>
+
+    <!-- Donut -->
+    <div class="ov-card" style="grid-column:3;grid-row:2;flex-direction:row;gap:10px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <div class="ov-card-title">Rating Split</div>
+        <div class="ov-card-sub" style="margin-bottom:0">Full catalog</div>
+        <div class="ov-donut-wrap"><canvas id="ov_ratingDonut"></canvas>
+          <div class="ov-donut-center"><div class="ov-dcval">45.5%</div><div class="ov-dclbl">Adults</div></div>
+        </div>
+      </div>
+      <div class="ov-legend">
+        <div class="ov-li"><div class="ov-dot" style="background:#E50914"></div><span class="ov-lname">Adults</span><span class="ov-lval">4,009<span class="ov-lpct">45.5%</span></span></div>
+        <div class="ov-li"><div class="ov-dot" style="background:#F59E0B"></div><span class="ov-lname">Teens</span><span class="ov-lval">2,650<span class="ov-lpct">30.1%</span></span></div>
+        <div class="ov-li"><div class="ov-dot" style="background:#22D3EE"></div><span class="ov-lname">Older Kids</span><span class="ov-lval">1,150<span class="ov-lpct">13.1%</span></span></div>
+        <div class="ov-li"><div class="ov-dot" style="background:#22C55E"></div><span class="ov-lname">Family</span><span class="ov-lval">261<span class="ov-lpct">3.0%</span></span></div>
+        <div class="ov-li"><div class="ov-dot" style="background:#A78BFA"></div><span class="ov-lname">Kids</span><span class="ov-lval">647<span class="ov-lpct">7.3%</span></span></div>
+        <div class="ov-li"><div class="ov-dot" style="background:#555"></div><span class="ov-lname">Unrated</span><span class="ov-lval">90<span class="ov-lpct">1.0%</span></span></div>
+      </div>
+    </div>
+
+    <!-- TV Share + Holt -->
+    <div class="ov-card" style="grid-column:4;grid-row:2">
+      <div class="ov-card-title">TV Share + Holt Forecast</div>
+      <div class="ov-card-sub">
+        <span style="color:#22D3EE">— </span>Historical &nbsp;
+        <span style="color:#F59E0B;border-top:1px dashed #F59E0B;display:inline-block;width:16px;vertical-align:middle"></span> Forecast
+      </div>
+      <div class="ov-chart-wrap"><canvas id="ov_tvShare"></canvas></div>
+    </div>
+
+    <!-- ROW 3 -->
+
+    <!-- Cluster audience -->
+    <div class="ov-card" style="grid-column:1/3;grid-row:3">
+      <div class="ov-card-title">Audience Composition Per Cluster</div>
+      <div class="ov-card-sub">Rating band % within each K-Means segment</div>
+      <div class="ov-chart-wrap"><canvas id="ov_clusterRating"></canvas></div>
+    </div>
+
+    <!-- Evidence table -->
+    <div class="ov-card" style="grid-column:3/5;grid-row:3">
+      <div class="ov-card-title">Three-Method Signal Matrix</div>
+      <div class="ov-card-sub">Adult-focused signals vs. diversification signals</div>
+      <table class="ov-table">
+        <thead><tr>
+          <th>Method</th>
+          <th><span style="color:#E50914">● Adult-focused</span></th>
+          <th><span style="color:#22D3EE">● Diversification</span></th>
+        </tr></thead>
+        <tbody>
+          <tr><td>01 — Descriptive</td><td>Adults = 4,009 titles (45.5%); Dramas #1 genre at 1,600</td><td>85 producing countries; 7 rating bands; Kids' TV = 388</td></tr>
+          <tr><td>02 — Clustering</td><td>Cluster 2 (62.7%) is 100% modern movies, skews Adults + Teens</td><td>Cluster 0 carries teens/kids; Kids' TV is 3rd genre in C1</td></tr>
+          <tr><td>03 — Time Trends</td><td>Adults held 41–50% share every year 2014–2021</td><td>TV share +13pp; Teens growing; Holt projects near-parity</td></tr>
+        </tbody>
+      </table>
+      <div class="ov-insight" style="margin-top:8px"><strong>Verdict:</strong> Netflix is simultaneously adult-led AND diversifying — movies dominate by volume but TV is gaining share each year; adults dominate ratings but teens are growing fastest.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ PAGE 1 ══ -->
+<div id="page-m1" class="page">
+  <div class="page-scroll">
+    <div class="pg-header m1">
+      <div class="h-eyebrow">Method 1 — Descriptive Analysis</div>
+      <h1>Netflix Catalog<br><span>Overview</span></h1>
+      <p>An exploratory breakdown of Netflix's global content library — titles, genres, countries, ratings, and growth over time.</p>
+      <div class="h-line"></div>
+    </div>
+    <div class="main">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-accent" style="background:var(--red)"></div><div class="kpi-lbl">Total Titles</div><div class="kpi-val" style="color:var(--red)">8,807</div><div class="kpi-hint">Full catalog</div></div>
+        <div class="kpi"><div class="kpi-accent" style="background:var(--cyan)"></div><div class="kpi-lbl">Movies</div><div class="kpi-val" style="color:var(--cyan)">6,131</div><div class="kpi-hint">69.6% of catalog</div></div>
+        <div class="kpi"><div class="kpi-accent" style="background:var(--gold)"></div><div class="kpi-lbl">TV Shows</div><div class="kpi-val" style="color:var(--gold)">2,676</div><div class="kpi-hint">30.4% of catalog</div></div>
+        <div class="kpi"><div class="kpi-accent" style="background:var(--green)"></div><div class="kpi-lbl">Countries</div><div class="kpi-val" style="color:var(--green)">85</div><div class="kpi-hint">Unique producing nations</div></div>
+      </div>
+      <div class="sec">Content Composition & Growth</div>
+      <div class="row col-75">
+        <div class="card">
+          <div class="card-title">Titles Added Per Year</div>
+          <div class="card-sub">Movies vs TV Shows — 2008 to 2021</div>
+          <canvas id="lineChart" height="200"></canvas>
+          <div class="insight red"><strong>Peak growth</strong> — Netflix added 2,016 titles in 2019, its single largest year.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Movies vs TV Shows</div>
+          <div class="card-sub">Share of total catalog</div>
+          <div class="donut-wrap"><canvas id="donutChart" width="200" height="200"></canvas>
+            <div class="donut-center"><div class="donut-cval">8,807</div><div class="donut-clbl">Total</div></div>
+          </div>
+          <div class="donut-legend">
+            <div class="dl-item"><div class="dl-dot" style="background:var(--cyan)"></div><div class="dl-name">Movies</div><div class="dl-val">6,131 <span class="dl-pct">69.6%</span></div></div>
+            <div class="dl-item"><div class="dl-dot" style="background:var(--gold)"></div><div class="dl-name">TV Shows</div><div class="dl-val">2,676 <span class="dl-pct">30.4%</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec">Content Categories & Geography</div>
+      <div class="row col-2">
+        <div class="card">
+          <div class="card-title">Top 10 Genres</div>
+          <div class="card-sub">By primary genre tag — total titles</div>
+          <div class="hbar-list" id="genreList"></div>
+          <div class="insight red"><strong>Dramas</strong> dominate with 1,600 titles — nearly 2× the next category.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top 10 Countries</div>
+          <div class="card-sub">By primary country of production</div>
+          <div class="hbar-list" id="countryList"></div>
+          <div class="insight red"><strong>US content</strong> (3,211) accounts for 36% of all titles with a known country.</div>
+        </div>
+      </div>
+      <div class="sec">Audience & Duration Breakdown</div>
+      <div class="row col-3">
+        <div class="card">
+          <div class="card-title">Rating Distribution</div>
+          <div class="card-sub">Audience maturity groups</div>
+          <div class="vbar-area" id="ratingBars"></div>
+          <div class="vbar-labels" id="ratingLabels"></div>
+          <div class="insight red"><strong>Adults</strong> content leads at 4,009 titles — 45.5% of the catalog.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Movie Duration</div>
+          <div class="card-sub">Runtime categories — 6,131 movies</div>
+          <div class="hbar-list" id="movieList"></div>
+          <div class="mini-stats">
+            <div class="mini-stat"><div class="ms-val" style="color:var(--cyan)">2,963</div><div class="ms-lbl">Standard<br>76–105 min</div></div>
+            <div class="mini-stat"><div class="ms-val" style="color:var(--gold)">1,725</div><div class="ms-lbl">Extended<br>106–135 min</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">TV Show Season Depth</div>
+          <div class="card-sub">Number of seasons — 2,676 shows</div>
+          <div class="hbar-list" id="tvList"></div>
+          <div class="mini-stats">
+            <div class="mini-stat"><div class="ms-val" style="color:var(--purple)">1,793</div><div class="ms-lbl">1-Season<br>Shows</div></div>
+            <div class="mini-stat"><div class="ms-val" style="color:var(--pink)">43</div><div class="ms-lbl">Long-Running<br>8+ Seasons</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer>Netflix Titles Dataset · Method 1: Descriptive Analysis · 8,807 titles</footer>
+  </div>
+</div>
+
+<!-- ══ PAGE 2 ══ -->
+<div id="page-m2" class="page">
+  <div class="page-scroll">
+    <div class="pg-header m2">
+      <div class="h-eyebrow">Method 2 — K-Means Clustering · k = 3</div>
+      <h1>Netflix Content<br><em>Segments</em></h1>
+      <p>K-Means clustering grouped 8,807 titles into 3 distinct content segments based on type, genre, rating, duration, release year, and geography.</p>
+      <div class="h-line"></div>
+      <div class="h-meta">
+        <div class="h-stat"><div class="h-stat-val">3</div><div class="h-stat-lbl">Clusters</div></div>
+        <div class="h-stat"><div class="h-stat-val">8,807</div><div class="h-stat-lbl">Titles</div></div>
+        <div class="h-stat"><div class="h-stat-val">K-Means</div><div class="h-stat-lbl">Method</div></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="sec">Cluster Profiles</div>
+      <div class="cluster-row">
+        <div class="ccard" style="border-color:rgba(245,158,11,.3)">
+          <div class="ccard-header" style="background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(245,158,11,.06))">
+            <div class="ccard-num" style="color:var(--c0)">CLUSTER 0</div>
+            <div class="ccard-name">Classic Hollywood</div>
+            <div class="ccard-size" style="color:rgba(245,158,11,.6)">627 titles · 7.1%</div>
+          </div>
+          <div class="ccard-body">
+            <div class="cstat-row">
+              <div class="cstat"><div class="cstat-val" style="color:var(--c0)">1989</div><div class="cstat-lbl">Avg Release</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c0)">30.4</div><div class="cstat-lbl">Yrs on Netflix</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c0)">115</div><div class="cstat-lbl">Avg Min</div></div>
+            </div>
+            <div class="ctag-row">
+              <span class="ctag" style="color:var(--c0);border-color:rgba(245,158,11,.3);background:var(--c0d)">Action & Adventure</span>
+              <span class="ctag" style="color:var(--c0);border-color:rgba(245,158,11,.3);background:var(--c0d)">Teens</span>
+              <span class="ctag" style="color:var(--c0);border-color:rgba(245,158,11,.3);background:var(--c0d)">96.7% Movies</span>
+            </div>
+          </div>
+        </div>
+        <div class="ccard" style="border-color:rgba(34,211,238,.3)">
+          <div class="ccard-header" style="background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(34,211,238,.06))">
+            <div class="ccard-num" style="color:var(--c1)">CLUSTER 1</div>
+            <div class="ccard-name">Modern TV Library</div>
+            <div class="ccard-size" style="color:rgba(34,211,238,.6)">2,655 titles · 30.1%</div>
+          </div>
+          <div class="ccard-body">
+            <div class="cstat-row">
+              <div class="cstat"><div class="cstat-val" style="color:var(--c1)">2017</div><div class="cstat-lbl">Avg Release</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c1)">2.0</div><div class="cstat-lbl">Yrs on Netflix</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c1)">1.8</div><div class="cstat-lbl">Avg Seasons</div></div>
+            </div>
+            <div class="ctag-row">
+              <span class="ctag" style="color:var(--c1);border-color:rgba(34,211,238,.3);background:var(--c1d)">International TV</span>
+              <span class="ctag" style="color:var(--c1);border-color:rgba(34,211,238,.3);background:var(--c1d)">Adults</span>
+              <span class="ctag" style="color:var(--c1);border-color:rgba(34,211,238,.3);background:var(--c1d)">100% TV Shows</span>
+            </div>
+          </div>
+        </div>
+        <div class="ccard" style="border-color:rgba(229,9,20,.3)">
+          <div class="ccard-header" style="background:linear-gradient(135deg,rgba(229,9,20,.18),rgba(229,9,20,.06))">
+            <div class="ccard-num" style="color:var(--c2)">CLUSTER 2</div>
+            <div class="ccard-name">Modern Movie Catalog</div>
+            <div class="ccard-size" style="color:rgba(229,9,20,.6)">5,525 titles · 62.7%</div>
+          </div>
+          <div class="ccard-body">
+            <div class="cstat-row">
+              <div class="cstat"><div class="cstat-val" style="color:var(--c2)">2016</div><div class="cstat-lbl">Avg Release</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c2)">3.1</div><div class="cstat-lbl">Yrs on Netflix</div></div>
+              <div class="cstat"><div class="cstat-val" style="color:var(--c2)">98</div><div class="cstat-lbl">Avg Min</div></div>
+            </div>
+            <div class="ctag-row">
+              <span class="ctag" style="color:var(--c2);border-color:rgba(229,9,20,.3);background:var(--c2d)">Dramas</span>
+              <span class="ctag" style="color:var(--c2);border-color:rgba(229,9,20,.3);background:var(--c2d)">Adults</span>
+              <span class="ctag" style="color:var(--c2);border-color:rgba(229,9,20,.3);background:var(--c2d)">100% Movies</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sec">Size & Comparative Profile</div>
+      <div class="row col-57">
+        <div class="card">
+          <div class="card-title">Cluster Size Distribution</div>
+          <div class="card-sub">Share of total 8,807 titles</div>
+          <div style="position:relative;display:flex;align-items:center;justify-content:center">
+            <canvas id="sizeDonut" width="220" height="220"></canvas>
+            <div style="position:absolute;text-align:center;pointer-events:none">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1">8,807</div>
+              <div style="font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px">Titles</div>
+            </div>
+          </div>
+          <div class="pie-legend">
+            <div class="pl-item"><div class="pl-dot" style="background:var(--c0)"></div><div class="pl-name">Cluster 0 — Classic Hollywood</div><div class="pl-val">627 <span class="pl-pct">7.1%</span></div></div>
+            <div class="pl-item"><div class="pl-dot" style="background:var(--c1)"></div><div class="pl-name">Cluster 1 — Modern TV Library</div><div class="pl-val">2,655 <span class="pl-pct">30.1%</span></div></div>
+            <div class="pl-item"><div class="pl-dot" style="background:var(--c2)"></div><div class="pl-name">Cluster 2 — Modern Movie Catalog</div><div class="pl-val">5,525 <span class="pl-pct">62.7%</span></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Cluster Comparison Table</div>
+          <div class="card-sub">Key characteristics per segment</div>
+          <table class="ptable">
+            <thead><tr><th>Attribute</th><th><span style="color:var(--c0)">● C0</span></th><th><span style="color:var(--c1)">● C1</span></th><th><span style="color:var(--c2)">● C2</span></th></tr></thead>
+            <tbody>
+              <tr><td>Size</td><td>627</td><td>2,655</td><td>5,525</td></tr>
+              <tr><td>Content Type</td><td>96.7% Movies</td><td>100% TV Shows</td><td>100% Movies</td></tr>
+              <tr><td>Top Genre</td><td>Action & Adventure</td><td>International TV</td><td>Dramas</td></tr>
+              <tr><td>Top Rating</td><td>Teens</td><td>Adults</td><td>Adults</td></tr>
+              <tr><td>Avg Release Year</td><td>1989</td><td>2017</td><td>2016</td></tr>
+              <tr><td>Avg Age on Netflix</td><td>30.4 yrs</td><td>2.0 yrs</td><td>3.1 yrs</td></tr>
+              <tr><td>Avg Duration</td><td>115 min</td><td>1.8 seasons</td><td>98 min</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="sec">Genre & Rating Breakdown Per Cluster</div>
+      <div class="row col-2">
+        <div class="card">
+          <div class="card-title">Top Genres Per Cluster</div>
+          <div class="card-sub">Top 5 primary genres within each segment</div>
+          <div id="genreCompare" class="compare-wrap"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Rating Distribution Per Cluster</div>
+          <div class="card-sub">Audience maturity group breakdown</div>
+          <canvas id="ratingChart" height="260"></canvas>
+          <div class="insight"><strong>Cluster 0</strong> skews Teen-heavy (40%) while Clusters 1 & 2 are predominantly Adult-rated content.</div>
+        </div>
+      </div>
+    </div>
+    <footer>Netflix Titles Dataset · Method 2: K-Means Clustering (k=3) · 8,807 titles</footer>
+  </div>
+</div>
+
+<!-- ══ PAGE 3 ══ -->
+<div id="page-m3" class="page">
+  <div class="page-scroll">
+    <div class="pg-header" style="background:linear-gradient(155deg,#0c0c0c 50%,#0a0f08 100%);position:relative;overflow:hidden">
+      <div style="position:absolute;right:-10px;top:-30px;font-family:'Bebas Neue',sans-serif;font-size:280px;line-height:1;color:#22C55E;opacity:.03;pointer-events:none">T</div>
+      <div class="h-eyebrow" style="color:#22C55E">Method 3 — Time Trend Analysis · 2014–2021</div>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,5vw,68px);letter-spacing:3px;color:#fff;line-height:.95;margin-bottom:14px">Netflix Catalog<br><span style="color:#22C55E">Over Time</span></h1>
+      <p style="color:var(--muted2);font-size:13px;font-weight:300;max-width:560px;line-height:1.65">How Netflix's catalog composition has shifted year-over-year — content type growth, genre mix evolution, audience rating band trends, and a 3-year Holt forecast.</p>
+      <div style="width:40px;height:3px;background:#22C55E;margin-top:20px"></div>
+    </div>
+    <div class="main">
+      <div class="sec">Content Volume & Momentum</div>
+      <div class="row" style="grid-template-columns:1fr;margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">Movies vs TV Shows Added per Year</div>
+          <div class="card-sub">Raw annual counts + 3-year centred moving average — 2014 to 2021</div>
+          <canvas id="c3chart1" height="140"></canvas>
+          <div class="insight" style="border-left:3px solid #22C55E;margin-top:14px"><span><strong style="color:#22C55E">Movies peaked in 2019</strong> at 1,424 titles then declined sharply. TV shows grew steadily — their 3-yr MA climbed from 69 (2015) to 564 (2020).</span></div>
+        </div>
+      </div>
+      <div class="sec">Share Trajectory & Forecast</div>
+      <div class="row" style="grid-template-columns:1fr;margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">TV Share Trend & 3-Year Forecast</div>
+          <div class="card-sub">% of annual new-title additions — historical 2014–2021 + Holt linear forecast 2022–2024</div>
+          <canvas id="c3chart2" height="140"></canvas>
+          <div class="insight" style="border-left:3px solid #22C55E;margin-top:10px"><span><strong style="color:#22C55E">TV share crossed 30%</strong> by 2015 and recovered to 34% in 2021. Holt forecast suggests TV may surpass movies in new-title additions by 2023–2024.</span></div>
+        </div>
+      </div>
+      <div class="sec">Genre Composition</div>
+      <div class="row" style="grid-template-columns:1fr;margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">Genre Mix Over Time</div>
+          <div class="card-sub">Share of annual additions per primary genre — 2014 to 2021 (stacked area, %)</div>
+          <canvas id="c3chart3" height="140"></canvas>
+          <div class="insight" style="border-left:3px solid #22C55E;margin-top:14px"><span><strong style="color:#22C55E">Documentaries dominated in 2014</strong> (61.5%) but fell to ~10% by 2021. Dramas became the largest genre by 2018 and held that position.</span></div>
+        </div>
+      </div>
+      <div class="sec">Year-on-Year Swing</div>
+      <div class="row col-2" style="margin-bottom:28px">
+        <div class="card">
+          <div class="card-title">Year-on-Year TV Share Change</div>
+          <div class="card-sub">Percentage-point delta in TV's share of new-title additions</div>
+          <canvas id="c3chart5" height="200"></canvas>
+          <div class="insight" style="border-left:3px solid #22C55E;margin-top:14px"><span><strong style="color:#22C55E">2016 was the biggest single-year swing</strong> toward TV (+9.3pp). By 2019–2021 the oscillation stabilised, with TV gaining a modest +2–4pp per year.</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card" style="flex:1">
+            <div class="card-title">Key Momentum Stats</div>
+            <div class="card-sub">Derived from 2014–2021 analysis window</div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+              <div style="display:flex;align-items:center;gap:14px;padding:14px;background:#1c1c1c;border-radius:8px;border:1px solid #2a2a2a">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E50914;line-height:1;flex-shrink:0">+200.8</div>
+                <div><div style="font-size:11px;color:var(--text);font-weight:600">Movies / Year</div><div style="font-size:10px;color:var(--muted);margin-top:3px">Linear trend slope — larger absolute gain but declining post-2019</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;padding:14px;background:#1c1c1c;border-radius:8px;border:1px solid #2a2a2a">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#22D3EE;line-height:1;flex-shrink:0">+91.1</div>
+                <div><div style="font-size:11px;color:var(--text);font-weight:600">TV Shows / Year</div><div style="font-size:10px;color:var(--muted);margin-top:3px">Linear trend slope — slower absolute, but growing share of mix</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;padding:14px;background:#1c1c1c;border-radius:8px;border:1px solid #2a2a2a">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#F59E0B;line-height:1;flex-shrink:0">2023</div>
+                <div><div style="font-size:11px;color:var(--text);font-weight:600">Forecast Crossover</div><div style="font-size:10px;color:var(--muted);margin-top:3px">Holt model projects TV additions may surpass movies by 2023–24</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer>Netflix Titles Dataset · Method 3: Time Trend Analysis · 2014–2021</footer>
+  </div>
+</div>
+
+<script>
+/* ── PAGE SWITCHING ── */
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='m0') initTab0();
+  if(id==='m3') initTab3();
+  setTimeout(()=>{
+    document.querySelectorAll('#page-'+id+' .card').forEach(c=>obsAll.observe(c));
+    document.querySelectorAll('#page-'+id+' [data-w]').forEach(el=>{el.style.width=el.dataset.w});
+    document.querySelectorAll('#page-'+id+' [data-h]').forEach(el=>{el.style.height=el.dataset.h});
+  },80);
+}
+
+/* ── DATA ── */
+const D1 = {
+  yearly:{years:[2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021],movies:[1,2,1,13,3,6,19,56,253,839,1237,1424,1284,993],tv:[1,0,0,0,0,5,5,26,176,349,412,592,595,505]},
+  genres:{labels:["Dramas","Comedies","Action & Adventure","Documentaries","International TV Shows","Children & Family Movies","Crime TV Shows","Kids' TV","Stand-Up Comedy","Horror Movies"],values:[1600,1210,859,829,774,605,399,388,334,275]},
+  countries:{labels:["United States","India","United Kingdom","Canada","Japan","France","South Korea","Spain","Mexico","Australia"],values:[3211,1008,628,271,259,213,212,181,134,117]},
+  ratings:{labels:["Kids","Family","Older Kids","Teens","Adults","Unrated","Missing"],values:[647,261,1150,2650,4009,83,7]},
+  movie_buckets:{labels:["Short form","Lean feature","Standard feature","Extended feature","Long feature"],values:[183,728,2963,1725,532]},
+  tv_depth:{labels:["1 season","2 seasons","3-4 seasons","5-7 seasons","8+ seasons"],values:[1793,425,294,121,43]}
+};
+const D2 = {
+  profiles:[{id:0,name:"Classic Hollywood"},{id:1,name:"Modern TV Library"},{id:2,name:"Modern Movie Catalog"}],
+  genre_breakdown:{"0":{labels:["Action & Adventure","Dramas","Comedies","Classic Movies","Children & Family Movies"],values:[179,120,118,79,43]},"1":{labels:["International TV Shows","Crime TV Shows","Kids' TV","British TV Shows","Docuseries"],values:[773,399,386,251,219]},"2":{labels:["Dramas","Comedies","Documentaries","Action & Adventure","Children & Family Movies"],values:[1480,1092,813,680,562]}},
+  rating_breakdown:{"0":{labels:["Kids","Family","Older Kids","Teens","Adults","Unrated"],values:[4,27,112,253,223,8]},"1":{labels:["Kids","Family","Older Kids","Teens","Adults","Unrated","Missing"],values:[369,91,320,725,1143,5,2]},"2":{labels:["Kids","Family","Older Kids","Teens","Adults","Unrated","Missing"],values:[274,143,718,1672,2643,70,5]}}
+};
+const CC=["#F59E0B","#22D3EE","#E50914"];
+Chart.defaults.color="#666";Chart.defaults.font.family="'DM Sans',sans-serif";
+const TT={backgroundColor:"#1a1a1a",borderColor:"#333",borderWidth:1,titleColor:"#e8e8e8",bodyColor:"#999",padding:10};
+
+/* ── TAB 0 ── */
+let tab0Inited=false;
+function initTab0(){
+  if(tab0Inited) return; tab0Inited=true;
+  const OT={backgroundColor:"#1a1a1a",borderColor:"#333",borderWidth:1,titleColor:"#e8e8e8",bodyColor:"#999",padding:8};
+  const YRS=[2014,2015,2016,2017,2018,2019,2020,2021];
+  const bands=[
+    {l:"Adults",c:"#E50914",d:[38.5,41.8,44.3,47.2,49.4,44.9,45.1,46.2]},
+    {l:"Teens",c:"#F59E0B",d:[15.4,20.2,22.0,25.4,27.9,29.7,31.5,30.4]},
+    {l:"Older Kids",c:"#22D3EE",d:[19.2,14.6,14.8,13.1,11.2,13.1,12.4,12.6]},
+    {l:"Family",c:"#22C55E",d:[11.5,8.1,6.6,5.8,4.7,4.6,4.1,3.8]},
+    {l:"Kids",c:"#A78BFA",d:[15.4,15.3,12.3,8.5,6.8,7.7,6.9,7.0]}
+  ];
+  new Chart(document.getElementById('ov_ratingStack'),{type:'line',data:{labels:YRS,datasets:bands.map(b=>({label:b.l,data:b.d,borderColor:b.c,backgroundColor:b.c+'18',borderWidth:1.5,fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:b.c}))},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...OT,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}}},scales:{x:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:9}}},y:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:9},callback:v=>v+'%'},min:0,max:60}}}});
+  new Chart(document.getElementById('ov_ratingDonut'),{type:'doughnut',data:{labels:["Adults","Teens","Older Kids","Family","Kids","Unrated/Missing"],datasets:[{data:[4009,2650,1150,261,647,90],backgroundColor:["#E50914","#F59E0B","#22D3EE","#22C55E","#A78BFA","#444"],borderColor:"#161616",borderWidth:2,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:"70%",plugins:{legend:{display:false},tooltip:OT}}});
+  const clR={labels:["Kids","Family","Older Kids","Teens","Adults"],c0:[0.6,4.3,17.9,40.4,35.6],c1:[13.9,3.4,12.1,27.3,43.1],c2:[5.0,2.6,13.0,30.2,47.8]};
+  new Chart(document.getElementById('ov_clusterRating'),{type:'bar',data:{labels:clR.labels,datasets:[{label:"C0: Classic Hollywood",data:clR.c0,backgroundColor:"rgba(245,158,11,.75)",borderRadius:3,borderSkipped:false},{label:"C1: Modern TV Library",data:clR.c1,backgroundColor:"rgba(34,211,238,.75)",borderRadius:3,borderSkipped:false},{label:"C2: Modern Movie Catalog",data:clR.c2,backgroundColor:"rgba(229,9,20,.75)",borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:"#777",boxWidth:8,font:{size:9}}},tooltip:{...OT,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}}},scales:{x:{grid:{color:"#1a1a1a"},ticks:{color:"#555",font:{size:9}}},y:{grid:{color:"#1a1a1a"},ticks:{color:"#555",font:{size:9},callback:v=>v+'%'},min:0,max:55}}}});
+  new Chart(document.getElementById('ov_tvShare'),{type:'line',data:{labels:[2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024],datasets:[{label:"TV % (historical)",data:[20.8,31.7,41.0,29.4,25.0,29.4,31.7,33.7,null,null,null],borderColor:"#22D3EE",backgroundColor:"rgba(34,211,238,.07)",borderWidth:2,pointRadius:3,pointBackgroundColor:"#22D3EE",fill:true,tension:0.4,spanGaps:false},{label:"Holt forecast",data:[null,null,null,null,null,null,null,33.7,43.2,58.2,83.3],borderColor:"#F59E0B",backgroundColor:"rgba(245,158,11,.04)",borderWidth:2,borderDash:[5,4],pointRadius:3,pointBackgroundColor:"#F59E0B",fill:false,tension:0.4,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...OT,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y?ctx.parsed.y.toFixed(1)+'%':'n/a'}`}}},scales:{x:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:9}}},y:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:9},callback:v=>v+'%'},min:0,max:100}}}});
+}
+
+/* ── M1 ── */
+new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:D1.yearly.years,datasets:[{label:"Movies",data:D1.yearly.movies,borderColor:"#22D3EE",backgroundColor:"rgba(34,211,238,.08)",borderWidth:2.5,pointRadius:3,pointBackgroundColor:"#22D3EE",fill:true,tension:0.4},{label:"TV Shows",data:D1.yearly.tv,borderColor:"#F59E0B",backgroundColor:"rgba(245,158,11,.08)",borderWidth:2.5,pointRadius:3,pointBackgroundColor:"#F59E0B",fill:true,tension:0.4}]},options:{responsive:true,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:"#999",boxWidth:12,font:{size:11}}},tooltip:TT},scales:{x:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:10}}},y:{grid:{color:"#1e1e1e"},ticks:{color:"#555",font:{size:10}}}}}});
+new Chart(document.getElementById("donutChart"),{type:"doughnut",data:{labels:["Movies","TV Shows"],datasets:[{data:[6131,2676],backgroundColor:["#22D3EE","#F59E0B"],borderColor:"#161616",borderWidth:3,hoverOffset:8}]},options:{responsive:false,cutout:"68%",plugins:{legend:{display:false},tooltip:TT}}});
+
+function buildHBar(id,labels,values,colors){
+  const max=Math.max(...values);
+  document.getElementById(id).innerHTML=labels.map((l,i)=>`<div><div class="hbar-meta"><span class="hbar-name">${l}</span><span class="hbar-val">${values[i].toLocaleString()}</span></div><div class="hbar-track"><div class="hbar-fill" style="background:${Array.isArray(colors)?colors[i%colors.length]:colors}" data-w="${(values[i]/max*100).toFixed(1)}%"></div></div></div>`).join('');
+}
+buildHBar("genreList",D1.genres.labels,D1.genres.values,["#E50914","#F97316","#F59E0B","#22C55E","#22D3EE","#3B82F6","#A78BFA","#F472B6","#34D399","#FB7185"]);
+buildHBar("countryList",D1.countries.labels,D1.countries.values,["#22D3EE","#F59E0B","#A78BFA","#F472B6","#22C55E","#FB923C","#34D399","#60A5FA","#E879F9","#FBBF24"]);
+buildHBar("movieList",D1.movie_buckets.labels,D1.movie_buckets.values,["#94A3B8","#22D3EE","#E50914","#F59E0B","#A78BFA"]);
+buildHBar("tvList",D1.tv_depth.labels,D1.tv_depth.values,["#A78BFA","#F472B6","#22D3EE","#22C55E","#F59E0B"]);
+(function(){const{labels,values}=D1.ratings;const RCOLS=["#34D399","#22D3EE","#60A5FA","#F59E0B","#E50914","#888","#444"];const max=Math.max(...values);document.getElementById("ratingBars").innerHTML=labels.map((l,i)=>`<div class="vbar-col"><div class="vbar-count">${values[i].toLocaleString()}</div><div class="vbar-bar" style="background:${RCOLS[i]};height:0" data-h="${(values[i]/max*88).toFixed(1)}%"></div></div>`).join('');document.getElementById("ratingLabels").innerHTML=labels.map(l=>`<div class="vbar-lbl">${l}</div>`).join('');})();
+
+/* ── M2 ── */
+new Chart(document.getElementById("sizeDonut"),{type:"doughnut",data:{labels:["Classic Hollywood","Modern TV Library","Modern Movie Catalog"],datasets:[{data:[627,2655,5525],backgroundColor:CC,borderColor:"#161616",borderWidth:3,hoverOffset:8}]},options:{responsive:false,cutout:"68%",plugins:{legend:{display:false},tooltip:TT}}});
+(function(){const allRatings=["Kids","Family","Older Kids","Teens","Adults","Unrated"];const datasets=D2.profiles.map((p,i)=>{const rb=D2.rating_breakdown[String(p.id)];return{label:`C${p.id}: ${p.name}`,data:allRatings.map(r=>{const idx=rb.labels.indexOf(r);return idx>=0?rb.values[idx]:0;}),backgroundColor:CC[i],borderRadius:3,borderSkipped:false};});new Chart(document.getElementById("ratingChart"),{type:"bar",data:{labels:allRatings,datasets},options:{responsive:true,plugins:{legend:{labels:{color:"#888",boxWidth:10,font:{size:10}}},tooltip:TT},scales:{x:{grid:{color:"#1a1a1a"},ticks:{color:"#555",font:{size:10}}},y:{grid:{color:"#1a1a1a"},ticks:{color:"#555",font:{size:10}}}}}});})();
+(function(){const allGenres=[...new Set(Object.values(D2.genre_breakdown).flatMap(d=>d.labels))];const maxVal=Math.max(...Object.values(D2.genre_breakdown).flatMap(d=>d.values));document.getElementById("genreCompare").innerHTML=allGenres.map(genre=>`<div><div class="compare-label">${genre}</div><div class="compare-bars">${D2.profiles.map((p,i)=>{const rb=D2.genre_breakdown[String(p.id)];const idx=rb.labels.indexOf(genre);const val=idx>=0?rb.values[idx]:0;return`<div class="cbar-row"><div class="cbar-cluster">C${p.id}</div><div class="cbar-track"><div class="cbar-fill" style="background:${CC[i]}" data-w="${(val/maxVal*100).toFixed(1)}%"></div></div><div class="cbar-val">${val.toLocaleString()}</div></div>`;}).join('')}</div></div>`).join('');})();
+
+/* ── OBSERVER ── */
+const obsAll=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');e.target.querySelectorAll('[data-w]').forEach(el=>setTimeout(()=>el.style.width=el.dataset.w,100));e.target.querySelectorAll('[data-h]').forEach(el=>setTimeout(()=>el.style.height=el.dataset.h,100));obsAll.unobserve(e.target);}});},{threshold:0.08});
+document.querySelectorAll('.card').forEach(c=>obsAll.observe(c));
+initTab0();
+
+/* ── TAB 3 ── */
+let tab3Inited=false;
+const C3O={animation:{duration:900},plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1c1c',borderColor:'rgba(255,255,255,.12)',borderWidth:1,titleColor:'#e8e8e8',bodyColor:'#999',padding:10}},scales:{x:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#737373',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#737373',font:{size:10}}}}};
+function initTab3(){
+  if(tab3Inited) return; tab3Inited=true;
+  const YRS=[2014,2015,2016,2017,2018,2019,2020,2021];
+  new Chart(document.getElementById('c3chart1'),{type:'line',data:{labels:YRS,datasets:[{label:'Movies (raw)',data:[19,56,253,839,1237,1424,1284,993],borderColor:'rgba(229,9,20,0.35)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'rgba(229,9,20,0.5)',tension:0.4},{label:'Movies 3-yr MA',data:[null,109.33,382.67,776.33,1166.67,1315.00,1233.67,null],borderColor:'#E50914',backgroundColor:'rgba(229,9,20,.07)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#E50914',fill:true,tension:0.4,spanGaps:false},{label:'TV Shows (raw)',data:[5,26,176,349,412,592,595,505],borderColor:'rgba(34,211,238,0.35)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'rgba(34,211,238,0.5)',tension:0.4},{label:'TV 3-yr MA',data:[null,69.00,183.67,312.33,451.00,533.00,564.00,null],borderColor:'#22D3EE',backgroundColor:'rgba(34,211,238,.07)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#22D3EE',fill:true,tension:0.4,spanGaps:false}]},options:{...C3O,responsive:true,interaction:{mode:'index',intersect:false},scales:{...C3O.scales,y:{...C3O.scales.y,ticks:{...C3O.scales.y.ticks,callback:v=>v.toLocaleString()}}}}});
+  const allYrs=[2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+  new Chart(document.getElementById('c3chart2'),{type:'line',data:{labels:allYrs,datasets:[{label:'Movies %',data:[79.2,68.3,59.0,70.6,75.0,70.6,68.3,66.3,null,null,null],borderColor:'#E50914',backgroundColor:'rgba(229,9,20,.06)',borderWidth:2,pointRadius:2,pointBackgroundColor:'#E50914',fill:true,tension:0.4,spanGaps:false},{label:'TV % (historical)',data:[20.8,31.7,41.0,29.4,25.0,29.4,31.7,33.7,null,null,null],borderColor:'#22D3EE',backgroundColor:'rgba(34,211,238,.06)',borderWidth:2,pointRadius:2,pointBackgroundColor:'#22D3EE',fill:true,tension:0.4,spanGaps:false},{label:'TV % (Holt forecast)',data:[null,null,null,null,null,null,null,33.7,43.2,58.2,83.3],borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.04)',borderWidth:2,borderDash:[5,4],pointRadius:3,pointBackgroundColor:'#F59E0B',fill:true,tension:0.4,spanGaps:false}]},options:{...C3O,responsive:true,interaction:{mode:'index',intersect:false},scales:{...C3O.scales,y:{...C3O.scales.y,min:0,max:100,ticks:{...C3O.scales.y.ticks,callback:v=>v+'%'}}}}});
+  const genreData=[{l:'Dramas',c:'#E50914',d:[0,19.05,21.72,24.04,31.37,26.72,27.97,26.20]},{l:'Comedies',c:'#22D3EE',d:[0,16.67,13.52,16.35,21.75,20.94,24.41,20.10]},{l:'Action & Adventure',c:'#F59E0B',d:[7.69,4.76,7.38,11.66,15.42,14.79,13.74,19.60]},{l:'Documentaries',c:'#A78BFA',d:[61.54,30.95,27.87,22.48,14.53,13.62,8.65,9.60]},{l:'International TV',c:'#22C55E',d:[0,2.38,21.72,16.23,9.80,13.98,12.45,12.90]},{l:'Children & Family',c:'#F472B6',d:[30.77,26.19,7.79,9.25,7.13,9.96,12.77,11.60]}];
+  new Chart(document.getElementById('c3chart3'),{type:'line',data:{labels:YRS,datasets:genreData.map(g=>({label:g.l,data:g.d,borderColor:g.c,backgroundColor:g.c+'20',borderWidth:1.5,pointRadius:2,pointBackgroundColor:g.c,fill:true,tension:0.4}))},options:{...C3O,responsive:true,interaction:{mode:'index',intersect:false},scales:{...C3O.scales,y:{...C3O.scales.y,min:0,max:100,ticks:{...C3O.scales.y.ticks,callback:v=>v+'%'}}}}});
+  const yoyVals=[10.9,9.3,-11.6,-4.4,4.4,2.3,2.0];
+  new Chart(document.getElementById('c3chart5'),{type:'bar',data:{labels:[2015,2016,2017,2018,2019,2020,2021],datasets:[{label:'YoY TV share change (pp)',data:yoyVals,backgroundColor:yoyVals.map(v=>v>=0?'#22D3EE':'#E50914'),borderRadius:4,borderSkipped:false}]},options:{...C3O,scales:{...C3O.scales,y:{...C3O.scales.y,ticks:{...C3O.scales.y.ticks,callback:v=>(v>0?'+':'')+v+'pp'}}}}});
+  document.querySelectorAll('#page-m3 .card').forEach(c=>obsAll.observe(c));
+}
+</script>
+</body>
+</html>
